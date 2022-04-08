@@ -1,4 +1,6 @@
-﻿using VeeamTestTask.Core;
+﻿using System;
+using System.IO;
+using VeeamTestTask.Core;
 
 namespace VeeamTestTask
 {
@@ -8,10 +10,27 @@ namespace VeeamTestTask
         {
             int chunkSize = 16;
             string inputFile = @"F:\test.txt";
-            //string inputFile = @"F:\OS.pdf";
+            string inputFileRes = @"F:\test_copy.txt";
             string outputFile = @"F:\OS_copy.txt";
-            Archivator archivator = new Archivator(inputFile, outputFile, chunkSize);
-            archivator.Compress();
+            //WriteBytes();
+            Archivator archivator = new Archivator(inputFile, outputFile, chunkSize, Environment.ProcessorCount);
+            archivator.StartCompressing();
+            archivator = new Archivator(outputFile, inputFileRes, chunkSize, Environment.ProcessorCount);
+            archivator.StartDecompressing();
+        }
+
+        static void WriteBytes()
+        {
+            string inputFileRes = @"F:\OS_copy.txt";
+            string file = @"F:\bytes.txt";
+            byte[] bytes = File.ReadAllBytes(inputFileRes);
+            string[] bytesAsString = new string[bytes.Length];
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                bytesAsString[i] = $"{i}. {bytes[i]}";
+            }
+
+            File.WriteAllLines(file, bytesAsString);
         }
     }
 }

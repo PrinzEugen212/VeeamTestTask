@@ -3,43 +3,46 @@ using System.IO;
 
 namespace VeeamTestTask.Core
 {
-    internal class Writer
+    internal class Writer : IDisposable
     {
-        private string filePath;
-        private int chunkSize;
         private object locker = new object();
-        private int writedChunks = 0;
         private FileStream fileStream;
-        private int orderNumber = 0;
 
-        public Writer(string filePath, int chunkSize)
+        public Writer(string filePath)
         {
-            this.filePath = filePath;
-            this.chunkSize = chunkSize;
-            fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write);
+            fileStream = new FileStream(filePath, FileMode.OpenOrCreate);
         }
 
-        public string FilePath => filePath;
+        public long Position => fileStream.Position;
 
-        public bool WriteBytes(byte[] bytes, ref int orderNumber, int orderIncrease)
+        public void Dispose()
         {
-            if (orderNumber != this.orderNumber)
-            {
-                return false;
-            }
+            fileStream.Dispose();
+        }
 
-            if (bytes == null)
-            {
-                return false;
-            }
-
+        public void WriteBytes(byte[] bytes, Header header = null)
+        {
             lock (locker)
             {
-                fileStream.Seek(writedChunks++ * chunkSize, SeekOrigin.Begin);
+                if (header is not null)
+                {
+                    header.StartPosition = (int)fileStream.Position + header.HeaderLength;
+                    Console.WriteLine(header);
+                    fileStream.Write(header.GetByteArray(), 0, header.HeaderLength);
+                }
+
                 fileStream.Write(bytes, 0, bytes.Length);
-                this.orderNumber++;
-                orderNumber += orderIncrease;
-                return true;
+                fileStream.Flush();
+            }
+        }
+
+        public void WriteBytes(byte[] bytes, int position)
+        {
+            lock (locker)
+            {
+                fileStream.Seek(position, SeekOrigin.Begin);
+                fileStream.Write(bytes, 0, bytes.Length);
+                fileStream.Flush();
             }
         }
     }
