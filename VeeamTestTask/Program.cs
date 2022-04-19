@@ -8,14 +8,14 @@ namespace VeeamTestTask
     {
         static void Main(string[] args)
         {
-            int chunkSize = 16;
-            string inputFile = @"F:\test.txt";
-            string inputFileRes = @"F:\test_copy.txt";
-            string outputFile = @"F:\OS_copy.txt";
+            int chunkSize =  1024;
+            string inputFile = @"D:\OS.txt";
+            string compressedFile = @"D:\OS_compressed.zip";
+            string outputFile = @"D:\OS_copy.txt";
             //WriteBytes();
-            Archivator archivator = new Archivator(inputFile, outputFile, chunkSize, Environment.ProcessorCount);
+            Archivator archivator = new Archivator(inputFile, compressedFile, chunkSize, Environment.ProcessorCount);
             archivator.StartCompressing();
-            archivator = new Archivator(outputFile, inputFileRes, chunkSize, Environment.ProcessorCount);
+            archivator = new Archivator(compressedFile, outputFile, chunkSize, Environment.ProcessorCount);
             archivator.StartDecompressing();
         }
 

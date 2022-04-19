@@ -54,6 +54,7 @@ namespace VeeamTestTask.Core
                     fileStream.Seek(c + table[i].ChunkLength, SeekOrigin.Begin);
                 }
             }
+
             table = table.OrderBy(h => h.OrderNumber).ToList();
         }
     }

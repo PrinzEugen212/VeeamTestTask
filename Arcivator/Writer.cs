@@ -10,7 +10,7 @@ namespace VeeamTestTask.Core
 
         public Writer(string filePath)
         {
-            fileStream = new FileStream(filePath, FileMode.OpenOrCreate);
+            fileStream = new FileStream(filePath, FileMode.Create);
         }
 
         public long Position => fileStream.Position;
