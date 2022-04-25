@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using VeeamTestTask.Core;
+using VeeamTestTask.Core.Utils;
 
 namespace VeeamTestTask
 {
@@ -9,15 +10,21 @@ namespace VeeamTestTask
         static void Main(string[] args)
         {
             int chunkSize =  1024 * 100;
-            string inputFile = @"G:\BeautifulLoR.jpg";
-            string compressedFile = @"G:\BeautifulLoR_compressed.comp";
-            string outputFile = @"G:\BeautifulLoR_copy.jpg";
-            Archivator archivator = new Archivator(inputFile, compressedFile, chunkSize, Environment.ProcessorCount);
-            archivator.StartCompressing();
-            archivator.Dispose();
-            archivator = new Archivator(compressedFile, outputFile, chunkSize, Environment.ProcessorCount);
-            archivator.StartDecompressing();
-            archivator.Dispose();
+            CommandParser commandParser = new CommandParser();
+            Parameters parameters = commandParser.ParseStart(Console.ReadLine());
+            if (parameters.Operation == Operation.Compress)
+            {
+                Archivator archivator = new Archivator(parameters.InputFile, parameters.OutputFile, chunkSize, Environment.ProcessorCount);
+                archivator.StartCompressing();
+                archivator.Dispose();
+            }
+            else
+            {
+                Archivator archivator = new Archivator(parameters.InputFile, parameters.OutputFile, chunkSize, Environment.ProcessorCount);
+                archivator.StartDecompressing();
+                archivator.Dispose();
+            }
+            
         }
     }
 }
