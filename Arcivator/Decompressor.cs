@@ -1,34 +1,70 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Threading;
-using System.Linq;
+using VeeamTestTask.Core.ReadWrite;
+using VeeamTestTask.Core.Utils;
 
 namespace VeeamTestTask.Core
 {
-    internal class Decompressor
+    internal class Decompressor : IDisposable
     {
-        private Reader reader;
-        private Writer writer;
-        List<Header> table = new List<Header>();
-        string fileToCompress;
+        private string fileToDecompress;
+        private int chunkSize;
+        private int threadCount;
+        private ReaderManager readerManager;
+        private WriterManager writerManager;
+        private List<Header> headers = new List<Header>();
+        private Thread[] threads;
 
-        public Decompressor(string fileToDecompress, string fileToSave)
+        public Decompressor(string fileToDecompress, string fileToSave, int chunkSize, int threadCount)
         {
-            this.fileToCompress = fileToDecompress;
-            CreateOrderTable();
-            reader = new Reader(fileToDecompress, 0);
-            writer = new Writer(fileToSave);
+            this.fileToDecompress = fileToDecompress;
+            this.chunkSize = chunkSize;
+            this.threadCount = threadCount;
+            threads = new Thread[threadCount];
+            readerManager = new ReaderManager(fileToDecompress);
+            writerManager = new WriterManager(fileToSave);
         }
 
         public void StartDecompressing()
         {
-            //CreateOrderTable();
-            for (int i = 0; i < table.Count; i++)
+            for (int i = 0; i < threadCount; i++)
             {
-                byte[] buffer = reader.Read(table[i].StartPosition, table[i].ChunkLength);
+                threads[i] = new Thread(new ParameterizedThreadStart(DecompressSingleChunk));
+            }
+
+            headers = readerManager.ReadHeaders(fileToDecompress);
+
+            for (int i = 0; i < threadCount; i++)
+            {
+                threads[i].Start(i);
+            }
+
+            foreach (var thread in threads)
+            {
+                thread.Join();
+            }
+
+            readerManager.Dispose();
+            writerManager.Dispose();
+        }
+
+        private void DecompressSingleChunk(object index)
+        {
+            if (index is not int)
+            {
+                return;
+            }
+
+            int i = (int)index;
+            while (i < headers.Count)
+            {
+                byte[] buffer = readerManager.Read(headers[i].StartPosition, headers[i].ChunkLength);
                 buffer = Decompress(buffer);
-                writer.WriteBytes(buffer);
+                writerManager.WriteBytesAtPosition(buffer, chunkSize * headers[i].OrderNumber);
+                i += threadCount;
             }
         }
 
@@ -41,21 +77,10 @@ namespace VeeamTestTask.Core
             return resultStream.ToArray();
         }
 
-        private void CreateOrderTable()
+        public void Dispose()
         {
-            using (FileStream fileStream = new FileStream(fileToCompress, FileMode.Open))
-            {
-                for (int i = 0, c = 0; fileStream.Position < fileStream.Length; i++)
-                {
-                    byte[] buffer = new byte[12];
-                    fileStream.Read(buffer, 0, buffer.Length);
-                    table.Add(Header.Create(buffer));
-                    c = (int)fileStream.Position;
-                    fileStream.Seek(c + table[i].ChunkLength, SeekOrigin.Begin);
-                }
-            }
-
-            table = table.OrderBy(h => h.OrderNumber).ToList();
+            readerManager.Dispose();
+            writerManager.Dispose();
         }
     }
 }

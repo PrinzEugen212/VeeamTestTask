@@ -1,24 +1,20 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace VeeamTestTask.Core
+namespace VeeamTestTask.Core.Utils
 {
     internal class Header
     {
-        public Header(int startPosition, int chunkLength, int orderNumber)
+        public Header(long startPosition, int chunkLength, int orderNumber)
         {
             StartPosition = startPosition;
             ChunkLength = chunkLength;
             OrderNumber = orderNumber;
         }
 
-        public int StartPosition { get; set; }
+        public long StartPosition { get; set; }
         public int ChunkLength { get; set; }
         public int OrderNumber { get; set; }
-        public int HeaderLength => 12;
+        public static int HeaderLength => 16;
 
         public byte[] GetByteArray()
         {
@@ -37,9 +33,9 @@ namespace VeeamTestTask.Core
 
         public static Header Create(byte[] bytes)
         {
-            int startPosition = BitConverter.ToInt32(bytes, 0);
-            int length = BitConverter.ToInt32(bytes, 4);
-            int order = BitConverter.ToInt32(bytes, 8);
+            long startPosition = BitConverter.ToInt32(bytes, 0);
+            int length = BitConverter.ToInt32(bytes, 8);
+            int order = BitConverter.ToInt32(bytes, 12);
             return new Header(startPosition, length, order);
         }
 

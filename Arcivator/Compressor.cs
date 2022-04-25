@@ -1,23 +1,24 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.IO.Compression;
-using System.Linq;
 using System.Threading;
+using VeeamTestTask.Core.ReadWrite;
+using VeeamTestTask.Core.Utils;
 
 namespace VeeamTestTask.Core
 {
-    internal class Compressor
+    internal class Compressor : IDisposable
     {
         private int threadCount;
-        private Reader reader;
-        private Writer writer;
+        private ReaderManager readerManager;
+        private WriterManager writerManager;
         private Thread[] threads;
-        private int startPosition = 0;
 
         public Compressor(string fileToCompress, string fileToSave, int chunkSize, int threadCount)
         {
             this.threadCount = threadCount;
-            reader = new Reader(fileToCompress, chunkSize);
-            writer = new Writer(fileToSave);
+            readerManager = new ReaderManager(fileToCompress, chunkSize);
+            writerManager = new WriterManager(fileToSave);
             threads = new Thread[threadCount];
         }
 
@@ -38,8 +39,22 @@ namespace VeeamTestTask.Core
                 thread.Join();
             }
 
-            reader.Dispose();
-            writer.Dispose();
+            readerManager.Dispose();
+            writerManager.Dispose();
+        }
+        private void Compress()
+        {
+            while (readerManager.IsBytesReaded)
+            {
+                byte[] bytes = readerManager.ReadChunk(out int orderNumber);
+                bytes = CompressBytes(bytes);
+                if (bytes.Length == 0)
+                {
+                    return;
+                }
+
+                writerManager.WriteBytes(bytes, orderNumber);
+            }
         }
 
         private byte[] CompressBytes(byte[] bytes)
@@ -50,20 +65,10 @@ namespace VeeamTestTask.Core
             zipStream.Close();
             return compressedStream.ToArray();
         }
-
-        private void Compress()
+        public void Dispose()
         {
-            while (reader.IsBytesLeft)
-            {
-                byte[] bytes = reader.ReadChunk(out int orderNumber);
-                bytes = CompressBytes(bytes);
-                if (bytes.Length == 0)
-                {
-                    return;
-                }
-
-                writer.WriteBytes(bytes, new Header(startPosition, bytes.Length, orderNumber));
-            }
+            readerManager.Dispose();
+            writerManager.Dispose();
         }
     }
 }
