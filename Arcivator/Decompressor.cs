@@ -53,28 +53,40 @@ namespace VeeamTestTask.Core
 
         private void DecompressSingleChunk(object index)
         {
-            if (index is not int)
+            try
             {
-                return;
-            }
+                if (index is not int)
+                {
+                    return;
+                }
 
-            int i = (int)index;
-            while (i < headers.Count)
+                int i = (int)index;
+                while (i < headers.Count)
+                {
+                    byte[] buffer = readerManager.Read(headers[i].StartPosition, headers[i].ChunkLength);
+                    buffer = DecompressBytes(buffer);
+                    writerManager.WriteBytesAtPosition(buffer, chunkSize * headers[i].OrderNumber);
+                    i += threadCount;
+                }
+            }
+            catch (Exception ex)
             {
-                byte[] buffer = readerManager.Read(headers[i].StartPosition, headers[i].ChunkLength);
-                buffer = Decompress(buffer);
-                writerManager.WriteBytesAtPosition(buffer, chunkSize * headers[i].OrderNumber);
-                i += threadCount;
+                HandleThreadException(ex);
             }
         }
 
-        private byte[] Decompress(byte[] bytes)
+        private byte[] DecompressBytes(byte[] bytes)
         {
             using MemoryStream compressedStream = new MemoryStream(bytes);
             using GZipStream zipStream = new GZipStream(compressedStream, CompressionMode.Decompress);
             using MemoryStream resultStream = new MemoryStream();
             zipStream.CopyTo(resultStream);
             return resultStream.ToArray();
+        }
+
+        private void HandleThreadException(Exception exception)
+        {
+            throw exception;
         }
 
         public void Dispose()

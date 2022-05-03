@@ -7,24 +7,34 @@ namespace VeeamTestTask
 {
     internal class Program
     {
-        static void Main(string[] args)
+        static int Main(string[] args)
         {
-            int chunkSize =  1024 * 100;
+            int chunkSize = 1024 * 100;
             CommandParser commandParser = new CommandParser();
-            Parameters parameters = commandParser.ParseStart(Console.ReadLine());
+            Parameters parameters;
+            if (args.Length > 0)
+            {
+                parameters = commandParser.ParseArgumentsArray(args);
+            }
+            else
+            {
+                if (commandParser.TryReadStartFromConsole(out parameters) == false)
+                {
+                    return 1;
+                };
+            }
+
             if (parameters.Operation == Operation.Compress)
             {
                 Archivator archivator = new Archivator(parameters.InputFile, parameters.OutputFile, chunkSize, Environment.ProcessorCount);
-                archivator.StartCompressing();
-                archivator.Dispose();
+                return archivator.StartCompressing();
             }
             else
             {
                 Archivator archivator = new Archivator(parameters.InputFile, parameters.OutputFile, chunkSize, Environment.ProcessorCount);
-                archivator.StartDecompressing();
-                archivator.Dispose();
+                return archivator.StartDecompressing();
             }
-            
+
         }
     }
 }

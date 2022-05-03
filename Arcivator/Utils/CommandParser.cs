@@ -11,35 +11,43 @@ namespace VeeamTestTask.Core.Utils
             {"decompress", Operation.Decompress}
         };
 
-        public bool TryReadStartCommandFromConsole(out Parameters starParameters)
+        public bool TryReadStartFromConsole(out Parameters parameters)
         {
-            string commandLine = Console.ReadLine();
+            Console.WriteLine("Please, print \"compress/decompress [source file name] [result file name]\"");
             try
             {
-                starParameters = ParseStart(commandLine);
+                parameters = ParseStart(Console.ReadLine());
             }
             catch
             {
-                starParameters = null;
+                parameters = null;
                 return false;
             }
             return true;
         }
 
+        public Parameters ParseArgumentsArray(string[] args)
+        {
+            if (args.Length != 3)
+            {
+                throw new ArgumentException("Invalid arguments");
+            }
+
+            Parameters outParameters = new Parameters();
+            outParameters.Operation = operationStringValue[args[0]];
+            outParameters.InputFile = args[1];
+            outParameters.OutputFile = args[2];
+            return outParameters;
+        }
+
         public Parameters ParseStart(string commandLine)
         {
-            Parameters outParameters = new Parameters();
             string[] parameters = commandLine.Split();
             if (!operationStringValue.ContainsKey(parameters[0]))
             {
                 throw new ArgumentException("Invalid command");
             }
-
-            outParameters.Operation = operationStringValue[parameters[0]];
-            outParameters.InputFile = parameters[1];
-            outParameters.OutputFile = parameters[2];
-
-            return outParameters;
+            return ParseArgumentsArray(parameters);
         }
     }
 }

@@ -42,18 +42,26 @@ namespace VeeamTestTask.Core
             readerManager.Dispose();
             writerManager.Dispose();
         }
+
         private void Compress()
         {
-            while (readerManager.IsBytesReaded)
+            try
             {
-                byte[] bytes = readerManager.ReadChunk(out int orderNumber);
-                bytes = CompressBytes(bytes);
-                if (bytes.Length == 0)
+                while (readerManager.IsBytesReaded)
                 {
-                    return;
+                    byte[] bytes = readerManager.ReadChunk(out int orderNumber);
+                    bytes = CompressBytes(bytes);
+                    if (bytes.Length == 0)
+                    {
+                        return;
+                    }
+                    throw new Exception();
+                    writerManager.WriteBytes(bytes, orderNumber);
                 }
-
-                writerManager.WriteBytes(bytes, orderNumber);
+            }
+            catch (Exception ex)
+            {
+                HandleThreadException(ex);
             }
         }
 
@@ -65,6 +73,12 @@ namespace VeeamTestTask.Core
             zipStream.Close();
             return compressedStream.ToArray();
         }
+
+        private void HandleThreadException(Exception exception)
+        {
+            throw exception;
+        }
+
         public void Dispose()
         {
             readerManager.Dispose();

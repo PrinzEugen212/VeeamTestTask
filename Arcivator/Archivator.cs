@@ -19,19 +19,39 @@ namespace VeeamTestTask.Core
             this.chunkSize = chunkSize;
         }
 
-        public void StartCompressing()
+        public int StartCompressing()
         {
-            Compressor compressor = new Compressor(fileToCompress, fileToSave, chunkSize, threadCount);
-            this.compressor = compressor;
-            compressor.StartCompressing();
+            try
+            {
+
+                Compressor compressor = new Compressor(fileToCompress, fileToSave, chunkSize, threadCount);
+                this.compressor = compressor;
+                compressor.StartCompressing();
+            }
+            catch
+            {
+                return 1;
+            }
+
+            return 0;
         }
 
-        public void StartDecompressing()
+        public int StartDecompressing()
         {
-            Decompressor decompressor = new Decompressor(fileToCompress, fileToSave, chunkSize, threadCount);
-            this.decompressor = decompressor;
-            decompressor.StartDecompressing();
+            try
+            {
+                Decompressor decompressor = new Decompressor(fileToCompress, fileToSave, chunkSize, threadCount);
+                this.decompressor = decompressor;
+                decompressor.StartDecompressing();
+            }
+            catch
+            {
+                return 1;
+            }
+
+            return 0;
         }
+
         public void Dispose()
         {
             compressor?.Dispose();
