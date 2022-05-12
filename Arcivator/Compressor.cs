@@ -2,12 +2,12 @@
 using System.IO;
 using System.IO.Compression;
 using System.Threading;
+using VeeamTestTask.Core.Interfaces;
 using VeeamTestTask.Core.ReadWrite;
-using VeeamTestTask.Core.Utils;
 
 namespace VeeamTestTask.Core
 {
-    internal class Compressor : IDisposable
+    public class Compressor : IDisposable, IArchivator
     {
         private int threadCount;
         private ReaderManager readerManager;
@@ -22,25 +22,40 @@ namespace VeeamTestTask.Core
             threads = new Thread[threadCount];
         }
 
-        public void StartCompressing()
+        public int Start()
         {
-            for (int i = 0; i < threadCount; i++)
+            try
             {
-                threads[i] = new Thread(Compress);
+                for (int i = 0; i < threadCount; i++)
+                {
+                    threads[i] = new Thread(Compress);
+                }
+
+                foreach (var thread in threads)
+                {
+                    thread.Start();
+                }
+
+                foreach (var thread in threads)
+                {
+                    thread.Join();
+                }
+
+                readerManager.Dispose();
+                writerManager.Dispose();
+            }
+            catch (IOException e)
+            {
+                Console.WriteLine($"Error while working with files:\n{e.Message}");
+                return 1;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error:\n{e.Message}");
+                return 1;
             }
 
-            foreach (var thread in threads)
-            {
-                thread.Start();
-            }
-
-            foreach (var thread in threads)
-            {
-                thread.Join();
-            }
-
-            readerManager.Dispose();
-            writerManager.Dispose();
+            return 0;
         }
 
         private void Compress()
@@ -55,7 +70,6 @@ namespace VeeamTestTask.Core
                     {
                         return;
                     }
-                    throw new Exception();
                     writerManager.WriteBytes(bytes, orderNumber);
                 }
             }

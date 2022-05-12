@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Threading;
+using VeeamTestTask.Core.Interfaces;
 using VeeamTestTask.Core.ReadWrite;
 using VeeamTestTask.Core.Utils;
 
 namespace VeeamTestTask.Core
 {
-    internal class Decompressor : IDisposable
+    public class Decompressor : IDisposable, IArchivator
     {
         private string fileToDecompress;
         private int chunkSize;
@@ -28,27 +29,42 @@ namespace VeeamTestTask.Core
             writerManager = new WriterManager(fileToSave);
         }
 
-        public void StartDecompressing()
+        public int Start()
         {
-            for (int i = 0; i < threadCount; i++)
+            try
             {
-                threads[i] = new Thread(new ParameterizedThreadStart(DecompressSingleChunk));
+                for (int i = 0; i < threadCount; i++)
+                {
+                    threads[i] = new Thread(new ParameterizedThreadStart(DecompressSingleChunk));
+                }
+
+                headers = readerManager.ReadHeaders(fileToDecompress);
+
+                for (int i = 0; i < threadCount; i++)
+                {
+                    threads[i].Start(i);
+                }
+
+                foreach (var thread in threads)
+                {
+                    thread.Join();
+                }
+
+                readerManager.Dispose();
+                writerManager.Dispose();
+            }
+            catch (IOException e)
+            {
+                Console.WriteLine($"Error while working with files:\n{e.Message}");
+                return 1;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error:\n{e.Message}");
+                return 1;
             }
 
-            headers = readerManager.ReadHeaders(fileToDecompress);
-
-            for (int i = 0; i < threadCount; i++)
-            {
-                threads[i].Start(i);
-            }
-
-            foreach (var thread in threads)
-            {
-                thread.Join();
-            }
-
-            readerManager.Dispose();
-            writerManager.Dispose();
+            return 0;
         }
 
         private void DecompressSingleChunk(object index)

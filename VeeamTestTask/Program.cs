@@ -1,6 +1,6 @@
 ﻿using System;
-using System.IO;
 using VeeamTestTask.Core;
+using VeeamTestTask.Core.Interfaces;
 using VeeamTestTask.Core.Utils;
 
 namespace VeeamTestTask
@@ -12,29 +12,37 @@ namespace VeeamTestTask
             int chunkSize = 1024 * 100;
             CommandParser commandParser = new CommandParser();
             Parameters parameters;
-            if (args.Length > 0)
+            try
             {
-                parameters = commandParser.ParseArgumentsArray(args);
-            }
-            else
-            {
-                if (commandParser.TryReadStartFromConsole(out parameters) == false)
+                if (args.Length > 0)
                 {
-                    return 1;
-                };
+                    parameters = commandParser.ParseArgumentsArray(args);
+                }
+                else
+                {
+                    if (commandParser.TryReadStartFromConsole(out parameters) == false)
+                    {
+                        return 1;
+                    };
+                }
+            }
+            catch
+            {
+                Console.WriteLine("Invalid arguments");
+                return 1;
             }
 
+            IArchivator archivator;
             if (parameters.Operation == Operation.Compress)
             {
-                Archivator archivator = new Archivator(parameters.InputFile, parameters.OutputFile, chunkSize, Environment.ProcessorCount);
-                return archivator.StartCompressing();
+                archivator = new Compressor(parameters.InputFile, parameters.OutputFile, chunkSize, Environment.ProcessorCount);
             }
             else
             {
-                Archivator archivator = new Archivator(parameters.InputFile, parameters.OutputFile, chunkSize, Environment.ProcessorCount);
-                return archivator.StartDecompressing();
+                archivator = new Decompressor(parameters.InputFile, parameters.OutputFile, chunkSize, Environment.ProcessorCount);
             }
 
+            return new Archivator(archivator).Start();
         }
     }
 }

@@ -1,19 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace VeeamTestTask.Core.Utils
 {
     public class CommandParser
     {
-        private readonly Dictionary<string, Operation> operationStringValue = new Dictionary<string, Operation>()
+        private readonly Dictionary<Operation, string[]> operationStringValue = new Dictionary<Operation, string[]>()
         {
-            {"compress", Operation.Compress},
-            {"decompress", Operation.Decompress}
+            { Operation.Compress, new string[] {"compress" , "c" } },
+            { Operation.Decompress, new string[] {"decompress" , "d" }}
         };
 
         public bool TryReadStartFromConsole(out Parameters parameters)
         {
-            Console.WriteLine("Please, print \"compress/decompress [source file name] [result file name]\"");
+            Console.WriteLine("Please, print \"compress/decompress/c/d [source file name] [result file name]\"");
             try
             {
                 parameters = ParseStart(Console.ReadLine());
@@ -23,31 +24,41 @@ namespace VeeamTestTask.Core.Utils
                 parameters = null;
                 return false;
             }
+
             return true;
+        }
+
+        public Parameters ParseStart(string commandLine)
+        {
+            string[] parameters = commandLine.Split();
+            return ParseArgumentsArray(parameters);
         }
 
         public Parameters ParseArgumentsArray(string[] args)
         {
             if (args.Length != 3)
             {
-                throw new ArgumentException("Invalid arguments");
+                throw new ArgumentException("Invalid arguments length");
             }
 
             Parameters outParameters = new Parameters();
-            outParameters.Operation = operationStringValue[args[0]];
+            outParameters.Operation = GetOperation(args[0]);
             outParameters.InputFile = args[1];
             outParameters.OutputFile = args[2];
             return outParameters;
         }
 
-        public Parameters ParseStart(string commandLine)
+        private Operation GetOperation(string command)
         {
-            string[] parameters = commandLine.Split();
-            if (!operationStringValue.ContainsKey(parameters[0]))
+            foreach (var commandString in operationStringValue)
             {
-                throw new ArgumentException("Invalid command");
+                if (commandString.Value.Contains(command))
+                {
+                    return commandString.Key;
+                }
             }
-            return ParseArgumentsArray(parameters);
+
+            throw new Exception("Unknown command");
         }
     }
 }
