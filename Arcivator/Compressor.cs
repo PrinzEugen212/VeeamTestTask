@@ -13,6 +13,10 @@ namespace VeeamTestTask.Core
         private ReaderManager readerManager;
         private WriterManager writerManager;
         private Thread[] threads;
+        private bool isCancellationRequested;
+        private Exception threadException;
+
+        private event EventHandler<Exception> handler;
 
         public Compressor(string fileToCompress, string fileToSave, int chunkSize, int threadCount)
         {
@@ -20,6 +24,8 @@ namespace VeeamTestTask.Core
             readerManager = new ReaderManager(fileToCompress, chunkSize);
             writerManager = new WriterManager(fileToSave);
             threads = new Thread[threadCount];
+            handler += OnInThreadException;
+            isCancellationRequested = false;
         }
 
         public int Start()
@@ -41,8 +47,10 @@ namespace VeeamTestTask.Core
                     thread.Join();
                 }
 
-                readerManager.Dispose();
-                writerManager.Dispose();
+                if (isCancellationRequested)
+                {
+                    throw threadException;
+                }
             }
             catch (IOException e)
             {
@@ -54,6 +62,10 @@ namespace VeeamTestTask.Core
                 Console.WriteLine($"Error:\n{e.Message}");
                 return 1;
             }
+            finally
+            {
+                Dispose();
+            }
 
             return 0;
         }
@@ -62,7 +74,7 @@ namespace VeeamTestTask.Core
         {
             try
             {
-                while (readerManager.IsBytesReaded)
+                while (readerManager.IsBytesReaded && isCancellationRequested == false)
                 {
                     byte[] bytes = readerManager.ReadChunk(out int orderNumber);
                     bytes = CompressBytes(bytes);
@@ -75,7 +87,8 @@ namespace VeeamTestTask.Core
             }
             catch (Exception ex)
             {
-                HandleThreadException(ex);
+                EventHandler<Exception> handler = this.handler;
+                handler?.Invoke(this, ex);
             }
         }
 
@@ -88,9 +101,10 @@ namespace VeeamTestTask.Core
             return compressedStream.ToArray();
         }
 
-        private void HandleThreadException(Exception exception)
+        private void OnInThreadException(object sender, Exception ex)
         {
-            throw exception;
+            isCancellationRequested = true;
+            threadException = ex;
         }
 
         public void Dispose()
